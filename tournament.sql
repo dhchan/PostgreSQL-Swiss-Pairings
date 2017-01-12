@@ -6,6 +6,8 @@
 -- You can write comments in this file by starting them with two dashes, like
 -- these lines here.
 
+--by Udacity
+
 --vagrant => psql
 --\c tournament   #to connect to the tournament database
 
