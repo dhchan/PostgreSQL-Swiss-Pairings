@@ -2,6 +2,8 @@
 # 
 # tournament.py -- implementation of a Swiss-system tournament
 #
+# function definitions by Udacity. Filled in by Daniel Chan
+#
 
 import psycopg2
 
