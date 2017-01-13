@@ -13,12 +13,10 @@ DROP DATABASE IF EXISTS tournament;
 CREATE DATABASE tournament;
 \c tournament;
 
-DROP TABLE IF EXISTS Players;
 CREATE TABLE Players (
   id serial primary key,
   name text);
-  
-DROP TABLE IF EXISTS Matches;
+
 CREATE TABLE Matches (
   match_id serial,
   winner int references Players (id),
@@ -40,24 +38,38 @@ INSERT INTO Matches (winner, loser) VALUES (1, 4);
 INSERT INTO Matches (winner, loser) VALUES (1, 5);
 INSERT INTO Matches (winner, loser) VALUES (2, 1);
 
-
-CREATE OR REPLACE VIEW WinCount as
-    SELECT Players.id, Players.name, count(Matches.winner) as wins
+SELECT Q1.id, Q1.name, Q1.wins, wins + losses as matches FROM
+    (SELECT Players.id, Players.name, count(Matches.winner) as wins
     FROM Players left join Matches ON Players.id = Matches.winner
     GROUP BY Players.id
-    ORDER BY id;
-  
-CREATE OR REPLACE VIEW LossCount as
-    SELECT Players.id, Players.name, count(Matches.loser) as losses
+    ORDER BY Players.id) as Q1,  
+    
+    (SELECT Players.id, Players.name, count(Matches.loser) as losses
     FROM Players left join Matches ON Players.id = Matches.loser
-    GROUP BY Players.id
-    ORDER BY id;
+    GROUP BY Players.id 
+    ORDER BY Players.id) AS Q2
     
-SELECT WinCount.id, WinCount.name, WinCount.wins, WinCount.wins + LossCount.losses as Matches
-    FROM WinCount join LossCount ON WinCount.id = LossCount.id;
+    WHERE Q1.id = Q2.id;
+    
+    --ON id = id
+    --ORDER BY matches;
 
-SELECT Players.id, Players.name, Count(Matches.winner) as wins
-      FROM Players left join Matches on Players.id = Matches.winner
-      GROUP BY Players.id
-      ORDER BY wins DESC;
+---CREATE OR REPLACE VIEW WinCount as
+    ---SELECT Players.id, Players.name, count(Matches.winner) as wins
+    ---FROM Players left join Matches ON Players.id = Matches.winner
+    ---GROUP BY Players.id
+    ---ORDER BY id;
+  
+---CREATE OR REPLACE VIEW LossCount as
+   --- SELECT Players.id, Players.name, count(Matches.loser) as losses
+    ---FROM Players left join Matches ON Players.id = Matches.loser
+    ---GROUP BY Players.id
+    ---ORDER BY id;
     
+---SELECT WinCount.id, WinCount.name, WinCount.wins, WinCount.wins + LossCount.losses as Matches
+   --- FROM WinCount join LossCount ON WinCount.id = LossCount.id;
+
+---SELECT Players.id, Players.name, Count(Matches.winner) as wins
+   ---   FROM Players left join Matches on Players.id = Matches.winner
+      ---GROUP BY Players.id
+      ---ORDER BY wins DESC;
