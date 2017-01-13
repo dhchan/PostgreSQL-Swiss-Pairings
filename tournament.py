@@ -1,8 +1,5 @@
 #!/usr/bin/env python
-# 
 # tournament.py -- implementation of a Swiss-system tournament
-#
-# function definitions by Udacity. Filled in by Daniel Chan
 #
 
 import psycopg2
@@ -15,17 +12,15 @@ def connect():
 
 def deleteMatches():
     """Remove all the match records from the database."""
+
     query1 = """TRUNCATE TABLE Matches;
-    """
-    query2 = """UPDATE Players
-    SET wins = 0, matches = 0;
     """
     conn = connect()
     c = conn.cursor()
     c.execute(query1)
-    c.execute(query2)
-    conn.commit() 
+    conn.commit()
     conn.close()
+
 
 def deletePlayers():
     """Remove all the player records from the database."""
@@ -34,7 +29,7 @@ def deletePlayers():
     conn = connect()
     c = conn.cursor()
     c.execute(query)
-    conn.commit() 
+    conn.commit()
     conn.close()
 
 
@@ -45,22 +40,22 @@ def countPlayers():
     conn = connect()
     c = conn.cursor()
     c.execute(query)
-    rows = c.fetchall()
+    rows = c.fetchone()
     conn.close()
-    return rows[0][0]
+    return rows[0]
+
 
 def registerPlayer(name):
     """Adds a player to the tournament database.
-  
     The database assigns a unique serial id number for the player.  (This
     should be handled by your SQL database schema, not in your Python code.)
-  
+
     Args:
       name: the player's full name (need not be unique).
     """
     conn = connect()
     c = conn.cursor()
-    c.execute("INSERT INTO Players (name, wins, matches) VALUES (%s, 0, 0);", (name,))
+    c.execute("INSERT INTO Players (name) VALUES (%s);", (name,))
     conn.commit() 
     conn.close()
 
@@ -78,15 +73,31 @@ def playerStandings():
         wins: the number of matches the player has won
         matches: the number of matches the player has played
     """
-    query = """SELECT *
-    FROM Players
-    ORDER BY wins DESC
+    
+    query1 = """CREATE OR REPLACE VIEW WinCount as
+    SELECT Players.id, Players.name, count(Matches.winner) as wins
+    FROM Players left join Matches ON Players.id = Matches.winner
+    GROUP BY Players.id
+    ORDER BY id; """
+    
+    query2 = """
+    CREATE OR REPLACE VIEW LossCount as
+    SELECT Players.id, Players.name, count(Matches.loser) as losses
+    FROM Players left join Matches ON Players.id = Matches.loser
+    GROUP BY Players.id
+    ORDER BY id;"""
+    
+    query3 = """
+    SELECT WinCount.id, WinCount.name, WinCount.wins, WinCount.wins + LossCount.losses as Matches
+    FROM WinCount join LossCount ON WinCount.id = LossCount.id;
     """
     conn = connect()
     c = conn.cursor()
-    c.execute(query)
+    c.execute(query1)
+    c.execute(query2)
+    c.execute(query3)
     rows = c.fetchall()
-    #conn.commit() 
+    conn.commit() 
     conn.close()
     return rows
 
@@ -98,12 +109,9 @@ def reportMatch(winner, loser):
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
-    query1 = "UPDATE Players SET wins = wins + 1, matches = matches + 1 WHERE id = " + str(winner)
-    query2 = "UPDATE Players SET matches = matches + 1 WHERE id = " + str(loser) 
     conn = connect()
     c = conn.cursor()
-    c.execute(query1)
-    c.execute(query2)
+    c.execute("INSERT INTO Matches (winner, loser) VALUES (%s, %s);", (winner, loser))
     conn.commit() 
     conn.close()
  
@@ -122,26 +130,22 @@ def swissPairings():
         id2: the second player's unique id
         name2: the second player's name
     """
-    query = "SELECT COUNT (*) from Players;"
+    
+    query = """SELECT Players.id, Players.name, Count(Matches.winner) as wins
+      FROM Players left join Matches on Players.id = Matches.winner
+      GROUP BY Players.id
+      ORDER BY wins DESC;"""
     pairings = []
     conn = connect()
     c = conn.cursor()
     c.execute(query)
     rows = c.fetchall()
-    numberRows = rows[0][0]
-    
-    #now we have the number of rows, we can iterate
+    numberRows = len(rows)
     i = 0
     while (i < numberRows):
-      query = "SELECT id, name FROM Players ORDER BY wins DESC LIMIT 2 OFFSET " + str(i) + ";"
-      c.execute(query)
-      rows = c.fetchall()
-      tuple = (rows[0][0], rows[0][1], rows[1][0], rows[1][1])
-      print tuple
-      pairings.append(tuple)
+      pairings.append((rows[i][0], rows[i][1], rows[i+1][0], rows[i+1][1]))
       i += 2
       
-    #conn.commit() 
     conn.close()
     return pairings
     
